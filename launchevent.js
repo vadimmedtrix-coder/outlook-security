@@ -1,1 +1,6 @@
-!function(){"use strict";const e=new Set(["med-trix.com"]);function t(e){return new Promise(function(t,n){e.getAsync(function(e){e.status===Office.AsyncResultStatus.Succeeded&&Array.isArray(e.value)?t(e.value):n(new Error("Unable to read recipients"))})})}function n(t){const n=String(t&&t.emailAddress||"").trim().toLowerCase(),c=n.lastIndexOf("@");return c<=0||c===n.length-1||!e.has(n.slice(c+1))}Office.actions.associate("onMessageSendHandler",async function(e){try{const c=Office.context.mailbox.item;(await Promise.all([t(c.to),t(c.cc),t(c.bcc)])).flat().some(n)?e.completed({allowEvent:!1,errorMessage:"שים לב – שליחת מייל מחוץ לארגון\nהודעה זו מיועדת לנמען אחד או יותר מחוץ לארגון.\nלפני השליחה, יש לוודא שההודעה והקבצים המצורפים אינם מכילים מידע רגיש או חסוי שאין לשתף מחוץ לארגון.\nהאם ברצונך להמשיך בשליחת המייל?"}):e.completed({allowEvent:!0})}catch(t){e.completed({allowEvent:!1,errorMessage:"לא ניתן לבדוק את נמעני ההודעה. בדוק את הנמענים לפני השליחה, או בחר Don't Send."})}})}();
+Office.actions.associate("onMessageSendHandler", function (event) {
+  event.completed({
+    allowEvent: false,
+    errorMessage: "Med-Trix TEST: Send event is working."
+  });
+});
