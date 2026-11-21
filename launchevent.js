@@ -1,4 +1,3 @@
-
 "use strict";
 
 Office.initialize = function () {
@@ -6,17 +5,17 @@ Office.initialize = function () {
 };
 
 const INTERNAL_DOMAINS = new Set(["med-trix.com"]);
+const RLM = "\u200F";
 
-const WARNING =
-  "שים לב – שליחת מייל מחוץ לארגון\n\n" +
-  "הודעה זו מיועדת לנמען אחד או יותר מחוץ לארגון.\n\n" +
-  "לפני השליחה, יש לוודא שההודעה והקבצים המצורפים " +
-  "אינם מכילים מידע רגיש או חסוי שאין לשתף מחוץ לארגון.\n\n" +
-  "האם ברצונך להמשיך בשליחת המייל?";
+const WARNING = [
+  `${RLM}היי, כאן מערכות מידע.`,
+  `${RLM}זוהתה הודעת דוא"ל המיועדת לנמען אחד או יותר מחוץ לארגון.`,
+  `${RLM}לפני השליחה, יש לוודא שההודעה והקבצים המצורפים אינם כוללים מידע רפואי, אישי, רגיש או חסוי שאין לשתף מחוץ לארגון.`,
+  `${RLM}אם בדקת את תוכן ההודעה והקבצים המצורפים והשליחה מאושרת — ניתן להמשיך.`,
+  `${RLM}האם ברצונך להמשיך בשליחת המייל?`
+].join("\n\n");
 
-const ERROR =
-  "לא ניתן להשלים את בדיקת הנמענים. " +
-  "יש לוודא שכתובות הנמענים תקינות לפני השליחה.";
+const ERROR_TEXT = `${RLM}לא ניתן להשלים את בדיקת הנמענים. יש לבדוק את הנמענים לפני השליחה.`;
 
 function getRecipients(field) {
   return new Promise((resolve, reject) => {
@@ -44,57 +43,41 @@ function isExternal(recipient) {
     return true;
   }
 
-  const domain = email.substring(atIndex + 1);
+  const domain = email.slice(atIndex + 1);
   return !INTERNAL_DOMAINS.has(domain);
 }
 
 async function onMessageSendHandler(event) {
-  let finished = false;
-
-  function complete(options) {
-    if (finished) return;
-    finished = true;
-    clearTimeout(timeout);
-    event.completed(options);
-  }
-
-  const timeout = setTimeout(() => {
-    complete({
-      allowEvent: false,
-      errorMessage: ERROR
-    });
-  }, 4000);
-
   try {
     const item = Office.context.mailbox.item;
 
-    const [to, cc, bcc] = await Promise.all([
-      getRecipients(item.to),
-      getRecipients(item.cc),
-      getRecipients(item.bcc)
-    ]);
+    const allRecipients = (
+      await Promise.all([
+        getRecipients(item.to),
+        getRecipients(item.cc),
+        getRecipients(item.bcc)
+      ])
+    ).flat();
 
-    const recipients = [...to, ...cc, ...bcc];
+    const hasExternalRecipient = allRecipients.some(isExternal);
 
-    if (recipients.some(isExternal)) {
-      complete({
+    if (hasExternalRecipient) {
+      event.completed({
         allowEvent: false,
         errorMessage: WARNING
       });
     } else {
-      complete({ allowEvent: true });
+      event.completed({
+        allowEvent: true
+      });
     }
   } catch (error) {
-    console.error("Med-Trix recipient check failed", error);
-
-    complete({
+    console.error("Med-Trix send check failed:", error);
+    event.completed({
       allowEvent: false,
-      errorMessage: ERROR
+      errorMessage: ERROR_TEXT
     });
   }
 }
 
-Office.actions.associate(
-  "onMessageSendHandler",
-  onMessageSendHandler
-);
+Office.actions.associate("onMessageSendHandler", onMessageSendHandler);
